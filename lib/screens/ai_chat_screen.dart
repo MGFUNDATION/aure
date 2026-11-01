@@ -53,7 +53,11 @@ class AiChatScreen extends StatefulWidget {
     super.key,
     this.startHumming = false,
     this.initialMessage,
+    this.asTab = false,
   });
+
+  /// Cuando es la pestaña "Buscar" de la barra inferior.
+  final bool asTab;
   final bool startHumming;
   final String? initialMessage;
 
@@ -305,13 +309,24 @@ class _AiChatScreenState extends State<AiChatScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome),
-            SizedBox(width: 8),
-            Text('Aure IA'),
-          ],
-        ),
+        title: widget.asTab
+            ? const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Buscar'),
+                  Text(
+                    'Aure IA · tararea, pega un enlace o escribe',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
+                  ),
+                ],
+              )
+            : const Row(
+                children: [
+                  Icon(Icons.auto_awesome),
+                  SizedBox(width: 8),
+                  Text('Aure IA'),
+                ],
+              ),
       ),
       body: Column(
         children: [

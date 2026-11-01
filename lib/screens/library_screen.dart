@@ -39,10 +39,10 @@ class LibraryScreen extends StatelessWidget {
         body: TabBarView(
           children: [
             const _PlaylistsTab(),
-            _TrackList(tracks: lib.tracks),
+            TrackListView(tracks: lib.tracks),
             _GroupList(groups: lib.byAlbum, icon: Icons.album),
             _GroupList(groups: lib.byArtist, icon: Icons.person),
-            _TrackList(
+            TrackListView(
               tracks: lib.downloads,
               emptyText:
                   'Aquí aparecen las canciones libres que descargues desde Aure IA.',
@@ -54,8 +54,8 @@ class LibraryScreen extends StatelessWidget {
   }
 }
 
-class _TrackList extends StatelessWidget {
-  const _TrackList({required this.tracks, this.emptyText});
+class TrackListView extends StatelessWidget {
+  const TrackListView({super.key, required this.tracks, this.emptyText});
   final List<Track> tracks;
   final String? emptyText;
 
@@ -136,7 +136,7 @@ class _GroupList extends StatelessWidget {
             MaterialPageRoute(
               builder: (_) => Scaffold(
                 appBar: AppBar(title: Text(k)),
-                body: _TrackList(tracks: list),
+                body: TrackListView(tracks: list),
               ),
             ),
           ),
@@ -185,7 +185,7 @@ class _PlaylistsTab extends StatelessWidget {
             MaterialPageRoute(
               builder: (_) => Scaffold(
                 appBar: AppBar(title: const Text('Mis favoritos')),
-                body: _TrackList(tracks: lib.favoriteTracks),
+                body: TrackListView(tracks: lib.favoriteTracks),
               ),
             ),
           ),

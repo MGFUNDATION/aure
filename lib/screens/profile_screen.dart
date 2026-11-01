@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../models/environment.dart';
 import '../state/library_store.dart';
 import '../state/player_store.dart';
 import '../state/settings_store.dart';
@@ -13,10 +13,14 @@ import '../theme/aure_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/scene_view.dart';
 import 'customize_screen.dart';
+import 'library_screen.dart';
+import 'player_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import 'wellness_screen.dart';
 
+/// Panel principal del perfil (según el diseño de G-Mitch):
+/// foto centrada, nombre, usuario, contadores, "Editar perfil" y secciones.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -25,203 +29,350 @@ class ProfileScreen extends StatelessWidget {
     final s = context.watch<SettingsStore>();
     final lib = context.watch<LibraryStore>();
     final stats = context.watch<StatsStore>();
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final text = Theme.of(context).textTheme;
     void go(Widget w) =>
         Navigator.push(context, MaterialPageRoute(builder: (_) => w));
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
-            child: Row(
-              children: [
-                Text(
-                  'Perfil',
-                  style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: dark
+              ? [const Color(0xFF14152B), const Color(0xFF0E0F1F)]
+              : [const Color(0xFFF7F5FD), const Color(0xFFEDF1F9)],
+        ),
+      ),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            // ---- Barra superior: Perfil · ajustes · campana ----
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 8, 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Perfil',
+                    style: text.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  onPressed: () => go(const SettingsScreen()),
-                ),
-              ],
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Ajustes',
+                    icon: const Icon(LucideIcons.settings),
+                    onPressed: () => go(const SettingsScreen()),
+                  ),
+                  IconButton(
+                    tooltip: 'Actividad',
+                    icon: const Icon(LucideIcons.bell),
+                    onPressed: () => go(const _HistoryScreen()),
+                  ),
+                ],
+              ),
             ),
-          ),
-          SizedBox(
-            height: 230,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  bottom: 70,
-                  child: GestureDetector(
-                    onTap: () async {
-                      final img = await ImagePicker().pickImage(
-                        source: ImageSource.gallery,
-                      );
-                      if (img != null) {
-                        s.update((s) => s.profileCoverPath = img.path);
-                      }
-                    },
-                    child: SceneView(
-                      env: s.environment,
-                      customImagePath: s.profileCoverPath ?? s.customBackground,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 20,
-                  bottom: 0,
-                  child: GestureDetector(
-                    onTap: () async {
-                      final img = await ImagePicker().pickImage(
-                        source: ImageSource.gallery,
-                      );
-                      if (img != null) s.update((s) => s.avatarPath = img.path);
-                    },
-                    child: CircleAvatar(
-                      radius: 52,
-                      backgroundColor: s.accent,
-                      child: CircleAvatar(
-                        radius: 48,
-                        backgroundImage: s.avatarPath != null
-                            ? FileImage(File(s.avatarPath!))
-                            : null,
-                        child: s.avatarPath == null
-                            ? Text(
-                                s.userName.isEmpty ? '?' : s.userName[0],
-                                style: const TextStyle(fontSize: 36),
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 136,
-                  right: 12,
-                  bottom: 8,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.userName,
-                              style: text.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(s.userHandle, style: text.bodySmall),
-                          ],
+            // ---- Portada ondulada + foto + nombre ----
+            SizedBox(
+              height: 272,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: 215,
+                    child: GestureDetector(
+                      onTap: () => _pickCover(context),
+                      child: ClipPath(
+                        clipper: _WaveClipper(),
+                        child: SceneView(
+                          env: s.environment,
+                          customImagePath: s.profileCoverPath,
                         ),
                       ),
-                      IconButton.outlined(
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _editProfile(context),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: Text('"${s.bio}"', style: text.bodyMedium),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Row(
-              children: [
-                _Stat(
-                  Icons.queue_music,
-                  'Playlists',
-                  '${lib.playlists.length}',
-                ),
-                _Stat(Icons.music_note, 'Canciones', '${lib.tracks.length}'),
-                _Stat(
-                  Icons.favorite_border,
-                  'Favoritas',
-                  '${lib.favorites.length}',
-                ),
-                _Stat(Icons.headphones, 'Escuchas', '${stats.totalPlays}'),
-              ],
-            ),
-          ),
-          SectionHeader(
-            'Mi universo',
-            action: 'Personalizar',
-            onAction: () => go(const CustomizeScreen()),
-          ),
-          SizedBox(
-            height: 110,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                for (final e in AureEnvironment.all)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: EnvironmentCard(
-                      env: e,
-                      width: 90,
-                      height: 105,
-                      selected: s.envId == e.id,
-                      onTap: () {
-                        s.selectEnvironment(e);
-                        context.read<PlayerStore>()
-                          ..activeEnvId = e.id
-                          ..applyMix(e.defaultMix);
-                      },
                     ),
                   ),
-              ],
+                  Positioned(
+                    left: 16,
+                    top: 128,
+                    child: GestureDetector(
+                      onTap: () => _pickAvatar(context),
+                      child: Container(
+                        width: 118,
+                        height: 118,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [scheme.primary, AurePalette.purple],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: scheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: dark
+                                ? const Color(0xFF26274A)
+                                : const Color(0xFFEDE7FD),
+                            border: Border.all(
+                              color: dark
+                                  ? const Color(0xFF14152B)
+                                  : Colors.white,
+                              width: 3,
+                            ),
+                            image: s.avatarPath != null
+                                ? DecorationImage(
+                                    image: FileImage(File(s.avatarPath!)),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          alignment: Alignment.center,
+                          child: s.avatarPath == null
+                              ? Text(
+                                  s.userName.isEmpty
+                                      ? '?'
+                                      : s.userName[0].toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 42,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.primary,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 148,
+                    right: 12,
+                    top: 162,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                s.userName,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              LucideIcons.badgeCheck,
+                              size: 22,
+                              color: scheme.primary,
+                            ),
+                          ],
+                        ),
+                        Text(
+                          s.userHandle,
+                          style: text.bodyMedium?.copyWith(
+                            color: text.bodyMedium?.color?.withValues(
+                              alpha: 0.65,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [scheme.primary, AurePalette.purple],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                LucideIcons.crown,
+                                size: 14,
+                                color: AurePalette.gold,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Miembro Aure',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SectionHeader('Mi espacio'),
-          _Section(
-            Icons.insights,
-            'Estadísticas',
-            'Datos de tu escucha y tus favoritos',
-            AurePalette.purple,
-            () => go(const StatsScreen()),
-          ),
-          _Section(
-            Icons.self_improvement,
-            'Bienestar',
-            'Ánimo, rutinas y enfoque',
-            AurePalette.green,
-            () => go(const WellnessScreen()),
-          ),
-          _Section(
-            Icons.history,
-            'Actividad reciente',
-            'Tu historial de reproducciones',
-            AurePalette.pink,
-            () => go(const _HistoryScreen()),
-          ),
-          _Section(
-            Icons.palette_outlined,
-            'Temas y colores',
-            'Claro, oscuro, color principal',
-            AurePalette.orange,
-            () => go(const CustomizeScreen(initialTab: 2)),
-          ),
-          _Section(
-            Icons.settings_outlined,
-            'Ajustes',
-            'Descargas, letras y privacidad',
-            AurePalette.blue,
-            () => go(const SettingsScreen()),
-          ),
-        ],
+            // ---- Frase + lápiz ----
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 16, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '"${s.bio}"',
+                      style: text.bodyMedium?.copyWith(height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Material(
+                    color: dark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(
+                        color: scheme.outlineVariant.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => _editProfile(context),
+                      child: const SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: Icon(LucideIcons.pencil, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            // ---- Tarjetas de contadores ----
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  _StatCard(
+                    LucideIcons.music,
+                    AurePalette.violet,
+                    'Playlists',
+                    '${lib.playlists.length}',
+                  ),
+                  _StatCard(
+                    LucideIcons.heart,
+                    AurePalette.pink,
+                    'Favoritas',
+                    '${lib.favorites.length}',
+                  ),
+                  _StatCard(
+                    LucideIcons.disc3,
+                    AurePalette.green,
+                    'Canciones',
+                    _compact(lib.tracks.length),
+                  ),
+                  _StatCard(
+                    LucideIcons.headphones,
+                    AurePalette.purple,
+                    'Escuchas',
+                    _compact(stats.totalPlays),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // ---- Secciones ----
+            _Row(
+              LucideIcons.mountain,
+              'Entornos guardados',
+              () => go(const CustomizeScreen()),
+            ),
+            _Row(
+              LucideIcons.alarmClock,
+              'Historial',
+              () => go(const _HistoryScreen()),
+            ),
+            _Row(
+              LucideIcons.download,
+              'Descargas',
+              () => go(
+                Scaffold(
+                  appBar: AppBar(title: const Text('Descargas')),
+                  body: TrackListView(
+                    tracks: lib.downloads,
+                    emptyText:
+                        'Aquí aparecen las canciones libres que descargues desde Aure IA.',
+                  ),
+                ),
+              ),
+            ),
+            _Row(
+              LucideIcons.slidersHorizontal,
+              'Mezclas personalizadas',
+              () => showAmbientSheet(context),
+            ),
+            _Row(
+              LucideIcons.chartColumn,
+              'Estadísticas',
+              () => go(const StatsScreen()),
+            ),
+            _Row(
+              LucideIcons.flower2,
+              'Bienestar',
+              () => go(const WellnessScreen()),
+            ),
+            _Row(
+              LucideIcons.settings,
+              'Ajustes',
+              () => go(const SettingsScreen()),
+            ),
+            _Row(
+              LucideIcons.circleHelp,
+              'Ayuda y soporte',
+              () => go(const _HelpScreen()),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  static String _compact(int n) {
+    if (n < 1000) return '$n';
+    final s = n.toString();
+    final out = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) out.write(',');
+      out.write(s[i]);
+    }
+    return out.toString();
+  }
+
+  Future<void> _pickCover(BuildContext context) async {
+    final s = context.read<SettingsStore>();
+    final img = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (img != null) s.update((s) => s.profileCoverPath = img.path);
+  }
+
+  Future<void> _pickAvatar(BuildContext context) async {
+    final s = context.read<SettingsStore>();
+    final img = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (img != null) s.update((s) => s.avatarPath = img.path);
   }
 
   Future<void> _editProfile(BuildContext context) async {
@@ -229,13 +380,37 @@ class ProfileScreen extends StatelessWidget {
     final name = TextEditingController(text: s.userName);
     final handle = TextEditingController(text: s.userHandle);
     final bio = TextEditingController(text: s.bio);
-    await showDialog(
+    await showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Editar perfil'),
-        content: Column(
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          20 + MediaQuery.viewInsetsOf(ctx).bottom,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const Text(
+              'Editar perfil',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _pickAvatar(context),
+              icon: const Icon(LucideIcons.camera),
+              label: const Text('Cambiar foto'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _pickCover(context),
+              icon: const Icon(LucideIcons.image),
+              label: const Text('Cambiar portada'),
+            ),
             TextField(
               controller: name,
               decoration: const InputDecoration(labelText: 'Nombre'),
@@ -249,74 +424,155 @@ class ProfileScreen extends StatelessWidget {
               maxLines: 2,
               decoration: const InputDecoration(labelText: 'Frase'),
             ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () {
+                s.update((s) {
+                  s.userName = name.text.trim();
+                  s.userHandle = handle.text.trim();
+                  s.bio = bio.text.trim();
+                });
+                Navigator.pop(ctx);
+              },
+              child: const Text('Guardar'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              s.update((s) {
-                s.userName = name.text.trim();
-                s.userHandle = handle.text.trim();
-                s.bio = bio.text.trim();
-              });
-              Navigator.pop(ctx);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat(this.icon, this.label, this.value);
+class _StatCard extends StatelessWidget {
+  const _StatCard(this.icon, this.color, this.label, this.value);
   final IconData icon;
+  final Color color;
   final String label;
   final String value;
 
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: Card(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 12),
+        decoration: BoxDecoration(
+          color: dark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: dark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFFE9E6F3),
+          ),
+        ),
+        child: Row(
           children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-            Text(label, style: const TextStyle(fontSize: 10)),
+            Icon(icon, color: color, size: 19),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  ),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-class _Section extends StatelessWidget {
-  const _Section(this.icon, this.title, this.subtitle, this.color, this.onTap);
+/// Borde inferior ondulado de la portada (como en el diseño).
+class _WaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    return Path()
+      ..lineTo(w, 0)
+      ..lineTo(w, h * 0.56)
+      ..cubicTo(w * 0.72, h * 0.48, w * 0.52, h * 0.56, w * 0.4, h * 0.68)
+      ..cubicTo(w * 0.27, h * 0.84, w * 0.13, h * 0.97, 0, h)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _Row extends StatelessWidget {
+  const _Row(this.icon, this.title, this.onTap);
   final IconData icon;
   final String title;
-  final String subtitle;
-  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-    leading: CircleAvatar(
-      backgroundColor: color.withValues(alpha: 0.15),
-      child: Icon(icon, color: color),
+    minTileHeight: 52,
+    leading: Icon(icon, size: 22),
+    title: Text(
+      title,
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
     ),
-    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-    subtitle: Text(subtitle),
-    trailing: const Icon(Icons.chevron_right),
+    trailing: const Icon(LucideIcons.chevronRight, size: 18),
     onTap: onTap,
+  );
+}
+
+class _HelpScreen extends StatelessWidget {
+  const _HelpScreen();
+
+  static const _faq = [
+    (
+      'No aparece mi música',
+      'Da permiso de "Música y audio" a Aure en los ajustes del teléfono y toca "Buscar música" en la Biblioteca.',
+    ),
+    (
+      '¿Cómo pongo la letra de una canción?',
+      'Aure la busca sola si tienes internet. Sin conexión, coloca un archivo .lrc con el mismo nombre junto a la canción.',
+    ),
+    (
+      '¿Cómo reconozco una canción tarareando?',
+      'Ve a Buscar, toca el micrófono y tararea o canta unos 10 segundos.',
+    ),
+    (
+      '¿Por qué veo un anuncio al descargar?',
+      'Solo hay un anuncio corto por cada canción libre que descargas gratis. Así apoyas el proyecto. No hay más anuncios en la app.',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Ayuda y soporte')),
+    body: ListView(
+      padding: const EdgeInsets.all(8),
+      children: [
+        for (final f in _faq)
+          ExpansionTile(
+            title: Text(f.$1),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [Text(f.$2)],
+          ),
+      ],
+    ),
   );
 }
 
