@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../models/environment.dart';
+import '../models/track.dart';
 import '../state/library_store.dart';
 import '../state/player_store.dart';
 import '../state/settings_store.dart';
@@ -10,260 +12,362 @@ import '../theme/aure_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/scene_view.dart';
 import 'customize_screen.dart';
-import 'stats_screen.dart';
-import 'wellness_screen.dart';
 
+/// Inicio (según el diseño): saludo, entorno activo, recomendados
+/// y escuchado recientemente.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  String _greeting() {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Buenos días';
-    if (h < 19) return 'Buenas tardes';
-    return 'Buenas noches';
-  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<SettingsStore>();
     final lib = context.watch<LibraryStore>();
     final stats = context.watch<StatsStore>();
-    final player = context.read<PlayerStore>();
+    final player = context.watch<PlayerStore>();
     final text = Theme.of(context).textTheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final muted = text.bodySmall?.color?.withValues(alpha: 0.65);
 
-    void mood(String envId) {
+    void mood(String envId, {Duration? sleep}) {
       final env = AureEnvironment.byId(envId);
       s.selectEnvironment(env);
       player.activeEnvId = env.id;
       player.applyMix(env.defaultMix);
+      if (sleep != null) player.setSleepTimer(sleep);
       if (lib.tracks.isNotEmpty) {
         player.playTracks(List.of(lib.tracks)..shuffle());
       }
     }
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Inicio',
-                  style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${_greeting()}, ${s.userName} 👋',
-                  style: text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text('¿Cómo quieres sentirte hoy?', style: text.bodySmall),
-              ],
+    final ambientOn = player.ambientVolumes.values.any((v) => v > 0.01);
+
+    // Lo escuchado recientemente (sin repetir canciones).
+    final seen = <int>{};
+    final recent = <Track>[];
+    for (final h in stats.history) {
+      final t = lib.byId(h['id'] as int);
+      if (t != null && seen.add(t.id)) recent.add(t);
+      if (recent.length == 5) break;
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: dark
+              ? const [Color(0xFF1A1C33), Color(0xFF0E0F1F)]
+              : s.sunrise
+              ? const [Color(0xFFFFF0E4), Color(0xFFFDE7EF)]
+              : const [Color(0xFFF7F5FD), Color(0xFFEDF1F9)],
+        ),
+      ),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          children: [
+            Text(
+              '¡Hola, ${s.userName}! 👋',
+              style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: SizedBox(
-              height: 160,
+            const SizedBox(height: 2),
+            Text(
+              '¿Cómo quieres sentirte hoy?',
+              style: text.bodyMedium?.copyWith(color: muted),
+            ),
+            const SizedBox(height: 20),
+            // ---- Entorno activo ----
+            SizedBox(
+              height: 190,
               child: SceneView(
                 env: s.environment,
                 customImagePath: s.customBackground,
-                brightness: s.illumination,
-                borderRadius: 20,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.environment.name,
-                        style: text.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                brightness: s.illumination * 0.85,
+                borderRadius: 22,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 10, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.environment.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w600,
+                                      shadows: [Shadow(blurRadius: 8)],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ambientOn
+                                        ? 'Entorno activo'
+                                        : 'Sonidos en pausa',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: ambientOn
+                                  ? 'Pausar sonidos del entorno'
+                                  : 'Activar sonidos del entorno',
+                              icon: Icon(
+                                ambientOn ? LucideIcons.x : LucideIcons.play,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              onPressed: () => ambientOn
+                                  ? player.stopAmbient()
+                                  : player.applyMix(
+                                      s.ambientMix.isEmpty
+                                          ? s.environment.defaultMix
+                                          : s.ambientMix,
+                                    ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const Text(
-                        'Entorno activo',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      const Spacer(),
-                      FilledButton.tonal(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AurePalette.violet,
-                        ),
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CustomizeScreen(),
+                        const Spacer(),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Color.lerp(
+                              s.accent,
+                              const Color(0xFF2C5E7A),
+                              0.45,
+                            )!.withValues(alpha: 0.9),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CustomizeScreen(),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cambiar entorno',
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
-                        child: const Text('Cambiar entorno'),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SectionHeader('Para ti'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            const SizedBox(height: 26),
+            Text(
+              'Recomendado para ti',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                RoundIconTile(
-                  icon: Icons.center_focus_strong,
-                  label: 'Enfoque',
+                _MoodTile(
+                  icon: LucideIcons.focus,
+                  label: 'Focus',
                   color: AurePalette.green,
                   onTap: () => mood('bosque'),
                 ),
-                RoundIconTile(
-                  icon: Icons.spa_outlined,
+                const SizedBox(width: 10),
+                _MoodTile(
+                  icon: LucideIcons.waves,
                   label: 'Relajación',
-                  color: AurePalette.blue,
+                  color: AurePalette.cyan,
                   onTap: () => mood('playa'),
                 ),
-                RoundIconTile(
-                  icon: Icons.nightlight_round,
+                const SizedBox(width: 10),
+                _MoodTile(
+                  icon: LucideIcons.moonStar,
                   label: 'Sueño',
-                  color: AurePalette.violet,
-                  onTap: () {
-                    mood('espacio');
-                    player.setSleepTimer(const Duration(minutes: 30));
-                  },
+                  color: AurePalette.blue,
+                  onTap: () =>
+                      mood('espacio', sleep: const Duration(minutes: 30)),
                 ),
-                RoundIconTile(
-                  icon: Icons.bolt,
+                const SizedBox(width: 10),
+                _MoodTile(
+                  icon: LucideIcons.sparkles,
                   label: 'Energía',
-                  color: AurePalette.pink,
+                  color: AurePalette.purple,
                   onTap: () => mood('ciudad'),
                 ),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ShortcutCard(
-                    icon: Icons.insights,
-                    title: 'Estadísticas',
-                    subtitle: 'Hoy: ${fmtMinutes(stats.minutesInRange(1))}',
-                    color: AurePalette.purple,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const StatsScreen()),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ShortcutCard(
-                    icon: Icons.self_improvement,
-                    title: 'Bienestar',
-                    subtitle: 'Rutinas y ánimo',
-                    color: AurePalette.green,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WellnessScreen()),
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 26),
+            Text(
+              'Escuchado recientemente',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-          ),
-          const SectionHeader('Escuchado recientemente'),
-          if (stats.history.isEmpty)
-            EmptyState(
-              icon: Icons.headphones,
-              text: lib.loading
-                  ? 'Buscando tu música…'
-                  : lib.permissionDenied
-                  ? 'Aure necesita permiso para leer tu música.'
-                  : lib.tracks.isEmpty
-                  ? 'No encontré canciones en el teléfono todavía.'
-                  : 'Reproduce algo y aparecerá aquí.',
-              action: lib.permissionDenied || lib.tracks.isEmpty
-                  ? FilledButton(
-                      onPressed: lib.scan,
-                      child: const Text('Buscar música'),
-                    )
-                  : null,
-            )
-          else
-            ...stats.history.take(5).map((h) {
-              final t = lib.byId(h['id'] as int);
-              if (t == null) return const SizedBox.shrink();
-              return TrackTile(track: t, onTap: () => player.playTracks([t]));
-            }),
-        ],
+            const SizedBox(height: 8),
+            if (recent.isEmpty)
+              _EmptyRecent(lib: lib, muted: muted)
+            else
+              for (final t in recent)
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () =>
+                      player.playTracks(recent, start: recent.indexOf(t)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Row(
+                      children: [
+                        Artwork(track: t, size: 50, radius: 10),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                fmtMinutes(t.duration.inSeconds / 60),
+                                style: TextStyle(fontSize: 12, color: muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(LucideIcons.rotateCw, size: 18, color: muted),
+                      ],
+                    ),
+                  ),
+                ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ShortcutCard extends StatelessWidget {
-  const _ShortcutCard({
+class _MoodTile extends StatelessWidget {
+  const _MoodTile({
     required this.icon,
-    required this.title,
-    required this.subtitle,
+    required this.label,
     required this.color,
     required this.onTap,
   });
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String label;
   final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: color.withValues(alpha: 0.15),
-                child: Icon(icon, color: color),
+        child: AspectRatio(
+          aspectRatio: 0.92,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: dark
+                    ? [
+                        color.withValues(alpha: 0.22),
+                        color.withValues(alpha: 0.06),
+                      ]
+                    : [
+                        color.withValues(alpha: 0.16),
+                        color.withValues(alpha: 0.05),
+                      ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+              border: Border.all(color: color.withValues(alpha: 0.18)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.45),
+                        blurRadius: 14,
                       ),
-                    ),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: dark ? Colors.white : color,
+                    size: 20,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(label, style: const TextStyle(fontSize: 11.5)),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EmptyRecent extends StatelessWidget {
+  const _EmptyRecent({required this.lib, required this.muted});
+  final LibraryStore lib;
+  final Color? muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final msg = lib.loading
+        ? 'Buscando tu música…'
+        : lib.permissionDenied
+        ? 'Aure necesita permiso para leer tu música.'
+        : lib.tracks.isEmpty
+        ? 'No encontré canciones en el teléfono todavía.'
+        : 'Reproduce algo y aparecerá aquí.';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(msg, style: TextStyle(color: muted)),
+          ),
+          if (!lib.loading && (lib.permissionDenied || lib.tracks.isEmpty))
+            TextButton(onPressed: lib.scan, child: const Text('Buscar música')),
+        ],
       ),
     );
   }
