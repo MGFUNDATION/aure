@@ -195,7 +195,10 @@ class _ColorsTab extends StatelessWidget {
             ),
           ],
           selected: {s.themeMode},
-          onSelectionChanged: (v) => s.update((s) => s.themeMode = v.first),
+          onSelectionChanged: (v) => s.update((s) {
+            s.themeMode = v.first;
+            s.sunrise = false;
+          }),
         ),
         const SizedBox(height: 20),
         const Text('Color principal'),

@@ -10,6 +10,7 @@ import '../state/player_store.dart';
 import '../state/settings_store.dart';
 import '../state/stats_store.dart';
 import '../theme/aure_theme.dart';
+import '../widgets/focus_stats.dart';
 import '../widgets/scene_view.dart';
 
 class _Mood {
@@ -74,6 +75,8 @@ class WellnessScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const FocusStatsPanel(),
+          const SizedBox(height: 24),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),

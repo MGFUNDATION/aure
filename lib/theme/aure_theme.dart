@@ -13,6 +13,7 @@ class AurePalette {
   static const gold = Color(0xFFFFD166);
 
   static const lightBg = Color(0xFFF6F4FC);
+  static const sunriseBg = Color(0xFFFFF3EA);
   static const lightSurface = Color(0xFFFFFFFF);
   static const darkBg = Color(0xFF0E0F1F);
   static const darkSurface = Color(0xFF1A1B30);
@@ -35,6 +36,7 @@ class AureTheme {
     required Brightness brightness,
     required Color accent,
     double fontScale = 1.0,
+    bool sunrise = false,
   }) {
     final dark = brightness == Brightness.dark;
     final scheme = ColorScheme.fromSeed(
@@ -48,7 +50,9 @@ class AureTheme {
       colorScheme: scheme,
       brightness: brightness,
       fontFamily: GoogleFonts.poppins().fontFamily,
-      scaffoldBackgroundColor: dark ? AurePalette.darkBg : AurePalette.lightBg,
+      scaffoldBackgroundColor: dark
+          ? AurePalette.darkBg
+          : (sunrise ? AurePalette.sunriseBg : AurePalette.lightBg),
     );
     return base.copyWith(
       textTheme: base.textTheme.apply(fontSizeFactor: fontScale),

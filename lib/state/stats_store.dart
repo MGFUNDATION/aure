@@ -57,6 +57,7 @@ class StatsStore extends ChangeNotifier {
 
   void addFocusSession(int minutes) {
     _inc('focusDaily', dayKey(DateTime.now()), minutes);
+    _inc('focusCount', dayKey(DateTime.now()), 1);
     _inc('counters', 'focusSessions', 1);
     _persist(force: true);
   }
@@ -102,6 +103,36 @@ class StatsStore extends ChangeNotifier {
       total += ((b[dayKey(d)] as num?) ?? 0).toDouble();
     }
     return total / 60;
+  }
+
+  double dayValue(String bucket, DateTime d) =>
+      ((_bucket(bucket)[dayKey(d)] as num?) ?? 0).toDouble();
+
+  /// Valores lunes→domingo de una semana (0 = esta, 1 = la pasada…).
+  List<double> week(String bucket, {int weeksAgo = 0}) {
+    final now = DateTime.now();
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day - (now.weekday - 1) - 7 * weeksAgo,
+    );
+    return List.generate(
+      7,
+      (i) =>
+          dayValue(bucket, DateTime(monday.year, monday.month, monday.day + i)),
+    );
+  }
+
+  /// Suma de un contador diario en [days] días, empezando hace [offsetDays].
+  double sumRange(String bucket, int days, {int offsetDays = 0}) {
+    final b = _bucket(bucket);
+    final today = DateTime.now();
+    var total = 0.0;
+    for (var i = offsetDays; i < offsetDays + days; i++) {
+      final d = DateTime(today.year, today.month, today.day - i);
+      total += ((b[dayKey(d)] as num?) ?? 0).toDouble();
+    }
+    return total;
   }
 
   double get totalMinutes =>

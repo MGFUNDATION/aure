@@ -25,6 +25,10 @@ class SettingsStore extends ChangeNotifier {
   final SharedPreferences _prefs;
 
   ThemeMode themeMode = ThemeMode.system;
+  bool sunrise = false; // tema "Amanecer"
+  bool cloudSync = false;
+  bool wifiOnlyDownloads = true;
+  String language = 'Español';
   Color accent = AurePalette.violet;
   String envId = AureEnvironment.all.first.id;
   String? customBackground; // ruta de imagen propia
@@ -41,10 +45,17 @@ class SettingsStore extends ChangeNotifier {
   String? avatarPath;
   String? profileCoverPath;
 
+  /// Tema visible: claro, oscuro o amanecer (claro cálido).
+  ThemeMode get effectiveThemeMode => sunrise ? ThemeMode.light : themeMode;
+
   AureEnvironment get environment => AureEnvironment.byId(envId);
 
   void _load() {
     themeMode = ThemeMode.values[_prefs.getInt('themeMode') ?? 0];
+    sunrise = _prefs.getBool('sunrise') ?? false;
+    cloudSync = _prefs.getBool('cloudSync') ?? false;
+    wifiOnlyDownloads = _prefs.getBool('wifiOnlyDownloads') ?? true;
+    language = _prefs.getString('language') ?? language;
     accent = Color(_prefs.getInt('accent') ?? AurePalette.violet.toARGB32());
     envId = _prefs.getString('envId') ?? envId;
     customBackground = _prefs.getString('customBackground');
@@ -72,6 +83,10 @@ class SettingsStore extends ChangeNotifier {
 
   Future<void> _save() async {
     await _prefs.setInt('themeMode', themeMode.index);
+    await _prefs.setBool('sunrise', sunrise);
+    await _prefs.setBool('cloudSync', cloudSync);
+    await _prefs.setBool('wifiOnlyDownloads', wifiOnlyDownloads);
+    await _prefs.setString('language', language);
     await _prefs.setInt('accent', accent.toARGB32());
     await _prefs.setString('envId', envId);
     if (customBackground == null) {

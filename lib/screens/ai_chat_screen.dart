@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -578,6 +579,19 @@ class _FreeTrackCardState extends State<_FreeTrackCard> {
       _progress = 0;
     });
     try {
+      if (context.read<SettingsStore>().wifiOnlyDownloads) {
+        final net = await Connectivity().checkConnectivity();
+        if (!net.contains(ConnectivityResult.wifi) &&
+            !net.contains(ConnectivityResult.ethernet)) {
+          setState(() {
+            _progress = null;
+            _error =
+                'Estás con datos móviles. Conéctate a Wi-Fi o cambia "Descargar contenidos" en Ajustes.';
+          });
+          return;
+        }
+      }
+      if (!mounted) return;
       final rewarded = await AdsService().showRewarded();
       if (!rewarded) {
         setState(() {

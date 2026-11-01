@@ -53,11 +53,12 @@ class AureApp extends StatelessWidget {
     return MaterialApp(
       title: 'Aure',
       debugShowCheckedModeBanner: false,
-      themeMode: s.themeMode,
+      themeMode: s.effectiveThemeMode,
       theme: AureTheme.build(
         brightness: Brightness.light,
         accent: s.accent,
         fontScale: s.fontScale,
+        sunrise: s.sunrise,
       ),
       darkTheme: AureTheme.build(
         brightness: Brightness.dark,
