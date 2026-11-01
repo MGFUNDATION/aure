@@ -1,0 +1,41 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      # Las claves son opcionales: configúralas en Settings → Secrets → Actions.
+      - name: Compilar APK
+        run: |
+          flutter build apk --release \
+            --dart-define=ACR_HOST=${{ secrets.ACR_HOST }} \
+            --dart-define=ACR_KEY=${{ secrets.ACR_KEY }} \
+            --dart-define=ACR_SECRET=${{ secrets.ACR_SECRET }} \
+            --dart-define=JAMENDO_CLIENT_ID=${{ secrets.JAMENDO_CLIENT_ID }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aure-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

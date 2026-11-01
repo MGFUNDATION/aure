@@ -1,0 +1,48 @@
+name: aure
+description: "Aure — Tu música. Tu mundo. Tu momento. Reproductor offline personalizable con IA."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Estado
+  provider: ^6.1.2
+
+  # Audio y biblioteca local
+  just_audio: ^0.10.4
+  audio_service: ^0.18.18
+  on_audio_query_pluse: ^3.0.7
+  permission_handler: ^13.0.2
+
+  # Almacenamiento y archivos
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.4
+  image_picker: ^1.1.2
+
+  # Red (letras, reconocimiento, catálogos libres)
+  http: ^1.2.2
+  crypto: ^3.0.5
+  url_launcher: ^6.3.0
+
+  # Micrófono para tararear
+  record: ^7.1.2
+
+  # Anuncio recompensado (solo por descarga gratuita)
+  google_mobile_ads: ^9.2.0
+
+  google_fonts: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/
